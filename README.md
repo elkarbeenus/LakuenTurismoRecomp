@@ -39,8 +39,9 @@ Firmware und Spiel-Updates lädt die App direkt von Sonys Servern.
 ## Bauen
 
 Der Workflow `.github/workflows/linux.yml` baut RPCS3 aus dem offiziellen Quellcode (fester Commit) plus
-die Patches in `emulator/gt6-patches/`, packt die AppImage und testet sie. Ein Tag `v*` veröffentlicht
-automatisch ein Release mit AppImage und `SHA256SUMS.txt`. Lokal: `packaging/build_appimage.sh`.
+die Patches in `emulator/gt6-patches/`, packt die AppImage und testet sie. Wird `__version__` in `gt6launcher/__init__.py` auf `main`
+erhöht (dazu `release-notes/v<version>.md`), legt der Workflow automatisch Tag und Release mit AppImage
+und `SHA256SUMS.txt` an. Test-Builds heißen z. B. `1.0.1-test1` und erscheinen als Pre-Release. Lokal: `packaging/build_appimage.sh`.
 
 Tests für den Updater: `python3 -m unittest tests/test_selfupdate.py`
 

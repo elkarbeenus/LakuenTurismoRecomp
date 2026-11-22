@@ -1,11 +1,16 @@
 name: LakuenTurismoRecomp AppImage (SteamOS) - build + release
 # Builds RPCS3 from upstream source at a pinned commit + the GT6 patches in emulator/gt6-patches,
-# packs the launcher AppImage, smoke-tests it and, for a v* tag, publishes the GitHub release
-# that the in-app updater reads.
+# packs the launcher AppImage, smoke-tests it and publishes the GitHub release v<__version__>
+# (tag created here) that the in-app updater reads.
+# Release = bump __version__ in gt6launcher/__init__.py (+ release-notes/v<version>.md) on main.
 on:
   workflow_dispatch:
   push:
-    tags: ["v*"]
+    branches: [main]
+    paths:
+      - "gt6launcher/__init__.py"
+      - "release-notes/**"
+      - ".github/workflows/linux.yml"
 
 permissions:
   contents: read
@@ -352,7 +357,7 @@ jobs:
   release:
     name: Publish GitHub release
     needs: build
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -369,8 +374,10 @@ jobs:
       - name: Rename, checksum and publish
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
         run: |
+          VERSION=$(python3 -c "import re;print(re.search(r'__version__ = \"([^\"]+)\"', open('gt6launcher/__init__.py').read()).group(1))")
+          TAG="v${VERSION}"
+          echo "release tag: $TAG"
           mkdir -p out
           mv dl/GT6-Launcher-Ubuntu-SDL2-x86_64.AppImage out/LakuenTurismoRecomp-x86_64.AppImage
           chmod +x out/LakuenTurismoRecomp-x86_64.AppImage
@@ -380,7 +387,7 @@ jobs:
           PRE=""
           case "$TAG" in *beta*|*test*|*rc*) PRE="--prerelease";; esac
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" out/* --clobber
+            echo "Release $TAG exists already - not replacing it (bump __version__ for a new one)."
           else
-            gh release create "$TAG" out/* --title "LakuenTurismoRecomp ${TAG}" --notes-file "$NOTES" $PRE
+            gh release create "$TAG" out/* --target "$GITHUB_SHA" --title "LakuenTurismoRecomp ${TAG}" --notes-file "$NOTES" $PRE
           fi
