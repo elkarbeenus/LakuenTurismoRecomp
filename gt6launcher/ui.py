@@ -335,7 +335,10 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         from . import __version__
-        self.setWindowTitle(f"Gran Turismo 6 PC  v{__version__}")
+        from . import APP_TITLE
+        from .selfupdate import display_version
+        self.setWindowTitle(f"{APP_TITLE}  {display_version(__version__)}")
+        self._pending_update: Optional[dict] = None
         self.setWindowIcon(QIcon(paths.resource("img/icon.png")))
         self.resize(1240, 780)
         self.core = Core(log=self._log_threadsafe)
@@ -424,22 +427,68 @@ class MainWindow(QMainWindow):
             return
         from html import escape
         from . import __version__
-        kind = tr("beta") if rel.get("prerelease") else tr("release")
+        from .selfupdate import can_self_update, display_version
+        self._pending_update = rel
+        kind = "Test-Build" if rel.get("prerelease") else "Version"
         self.update_lbl.setText(
-            f'{tr("New launcher")} {kind} {escape(rel["tag"])} {tr("available")} - '
-            f'<a style="color:#ffffff; font-weight:700;" href="{escape(rel["url"], quote=True)}">{tr("Download")}</a>')
-        self.update_lbl.setToolTip(f'{tr("You have")} v{__version__}')
+            f'Neue {kind} {escape(rel["version"])} verfügbar - '
+            f'<a style="color:#ffffff; font-weight:700;" href="{escape(rel["url"], quote=True)}">Was ist neu?</a>')
+        self.update_lbl.setToolTip(f"Installiert: {display_version(__version__)}")
         self.update_lbl.setVisible(True)
+        self.update_btn.setVisible(can_self_update())
         self._append_log(f"Launcher update available: {rel['tag']} (you have {__version__}) - {rel['url']}")
+        if not can_self_update() or self.proc:
+            return
+        box = QMessageBox(self)
+        box.setWindowTitle("Update verfügbar")
+        box.setIcon(QMessageBox.Icon.Information)
+        box.setText(f"LakuenTurismoRecomp {rel['version']} ist da.\n"
+                    f"Installiert ist {display_version(__version__)}.\n\n"
+                    "Jetzt aktualisieren? Einstellungen, Spielstände und Caches bleiben erhalten.")
+        upd = box.addButton("Aktualisieren", QMessageBox.ButtonRole.AcceptRole)
+        box.addButton("Später – mit alter Version spielen", QMessageBox.ButtonRole.RejectRole)
+        box.setDefaultButton(upd)
+        box.exec()
+        if box.clickedButton() is upd:
+            self.install_launcher_update()
+
+    def install_launcher_update(self) -> None:
+        rel = self._pending_update
+        if not rel:
+            return
+        if self.proc:
+            QMessageBox.information(self, "Update", "Bitte erst das Spiel beenden, dann aktualisieren.")
+            return
+        from . import selfupdate
+
+        def work(job):
+            def prog(done, total):
+                mb = done / 1048576
+                job.progress(f"Lade Update {rel['version']} ... {mb:.0f} MB", done, total)
+            path = selfupdate.install(rel, prog, job.cancel_event)
+            job.log(f"Update installed: {path}")
+            return path
+
+        def done(path):
+            QMessageBox.information(self, "Update installiert",
+                                    f"{rel['version']} ist installiert. LakuenTurismoRecomp startet jetzt neu.")
+            try:
+                selfupdate.restart(path)
+            except OSError as e:
+                QMessageBox.warning(self, "Neustart", f"Bitte LakuenTurismoRecomp selbst neu starten.\n{e}")
+            QApplication.instance().quit()
+
+        self._run(f"Update auf {rel['version']}", work, done)
 
     # ------------------------------------------------------------------ left panel
     def _build_left(self) -> QWidget:
         w = QWidget()
         v = QVBoxLayout(w)
         v.setContentsMargins(0, 0, 0, 0)
-        v.addWidget(label("GRAN TURISMO 6", 26, True))
+        v.addWidget(label("LAKUEN TURISMO", 26, True))
         from . import __version__
-        self.version_lbl = label(f"{tr('PC edition  ·  v')}{__version__}", 11, False, "muted")
+        from .selfupdate import display_version
+        self.version_lbl = label(f"Recomp  ·  {display_version(__version__)}", 11, False, "muted")
         v.addWidget(self.version_lbl)
         self.update_lbl = label("", 10, True, "update")
         self.update_lbl.setTextFormat(Qt.TextFormat.RichText)
@@ -447,6 +496,11 @@ class MainWindow(QMainWindow):
         self.update_lbl.setOpenExternalLinks(True)
         self.update_lbl.setVisible(False)
         v.addWidget(self.update_lbl)
+        self.update_btn = QPushButton("⬇ Update installieren")
+        self.update_btn.setObjectName("accent")
+        self.update_btn.clicked.connect(self.install_launcher_update)
+        self.update_btn.setVisible(False)
+        v.addWidget(self.update_btn)
         v.addStretch(1)
         self.game_box = QComboBox()
         self.game_box.currentIndexChanged.connect(self._on_game_changed)
@@ -1254,7 +1308,8 @@ class MainWindow(QMainWindow):
         # Subheader and Play button
         from . import __version__
         if hasattr(self, "version_lbl"):
-            self.version_lbl.setText(f"{i18n.tr('PC edition  ·  v', lang)}{__version__}")
+            from .selfupdate import display_version
+            self.version_lbl.setText(f"Recomp  ·  {display_version(__version__)}")
         if hasattr(self, "play_btn") and self.job is None and self.proc is None:
             self.play_btn.setText(i18n.tr("PLAY", lang))
 
@@ -1360,6 +1415,24 @@ class MainWindow(QMainWindow):
             + summary_txt
             + tr("\n\n(You can click 'Restore previous settings' anytime to revert.)")
         )
+
+    def _apply_lakuen_preset(self, skip: bool = False) -> None:
+        """Owner's PC preset (5800X3D / RX 6600 XT / B550), once per preset version.
+        Not on a handheld (800p screen); previous settings stay restorable."""
+        if skip or self.core.data.get("lakuen_preset") == profile.LAKUEN_PRESET_VERSION:
+            return
+        if not self.core.fresh_install:
+            self.core.data[self.AUTO_OPT_BACKUP_KEY] = self.s.to_dict()
+        recommended, summary = profile.lakuen_pc_settings()
+        for k, v in recommended.items():
+            if hasattr(self.s, k):
+                setattr(self.s, k, v)
+        self.core.data["lakuen_preset"] = profile.LAKUEN_PRESET_VERSION
+        self.core.save()
+        self._load_settings_into_ui()
+        self._update_auto_opt_buttons()
+        self._fill_patch_list()
+        self._append_log("LakuenTurismoRecomp preset applied:\n  " + "\n  ".join(summary))
 
     def restore_previous_settings(self) -> None:
         """Restore settings backed up before the last auto-configuration."""
@@ -1772,6 +1845,7 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------ actions
     def _first_run(self) -> None:
         # only on a brand-new install: never overwrite an existing (tuned) profile
+        handheld = False
         if not self.core.data.get("screen_checked") and self.core.fresh_install:
             self.core.data["screen_checked"] = True
             scr = QApplication.primaryScreen()
@@ -1780,7 +1854,10 @@ class MainWindow(QMainWindow):
                 if (size.width(), size.height()) in ((1280, 800), (800, 1280)):  # Steam Deck & co.
                     self.apply_handheld_preset()
                     self._append_log("800p screen detected - handheld preset applied")
+                    handheld = True
+                    self.core.data["lakuen_preset"] = profile.LAKUEN_PRESET_VERSION
             self.core.save()
+        self._apply_lakuen_preset(skip=handheld)
         if paths.IS_WINDOWS and not self.core.rpcs3_path():
             self._run("Preparing emulator", lambda job: self.core.ensure_rpcs3_windows(job.progress),
                       lambda _r: QTimer.singleShot(0, self._first_run))

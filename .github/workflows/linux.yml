@@ -1,15 +1,11 @@
-name: Linux (Ubuntu / SDL2) build + smoke test
+name: LakuenTurismoRecomp AppImage (SteamOS) - build + release
+# Builds RPCS3 from upstream source at a pinned commit + the GT6 patches in emulator/gt6-patches,
+# packs the launcher AppImage, smoke-tests it and, for a v* tag, publishes the GitHub release
+# that the in-app updater reads.
 on:
   workflow_dispatch:
   push:
-    branches: [main]
     tags: ["v*"]
-    paths:
-      - "gt6launcher/**"
-      - "packaging/**"
-      - "emulator/gt6-patches/**"
-      - "requirements.txt"
-      - ".github/workflows/linux.yml"
 
 permissions:
   contents: read
@@ -120,6 +116,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Updater unit tests
+        run: python3 -m unittest tests/test_selfupdate.py -v
 
       - name: Download GT6-patched RPCS3 Linux artifact
         uses: actions/download-artifact@v4
@@ -349,3 +348,39 @@ jobs:
           path: dist/GT6-Launcher-Ubuntu-SDL2-x86_64.AppImage
           compression-level: 0
           if-no-files-found: error
+
+  release:
+    name: Publish GitHub release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download AppImage artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: GT6-Launcher-Ubuntu-SDL2-x86_64
+          path: dl
+
+      - name: Rename, checksum and publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          mkdir -p out
+          mv dl/GT6-Launcher-Ubuntu-SDL2-x86_64.AppImage out/LakuenTurismoRecomp-x86_64.AppImage
+          chmod +x out/LakuenTurismoRecomp-x86_64.AppImage
+          (cd out && sha256sum LakuenTurismoRecomp-x86_64.AppImage > SHA256SUMS.txt && cat SHA256SUMS.txt)
+          NOTES="release-notes/${TAG}.md"
+          [ -f "$NOTES" ] || { echo "LakuenTurismoRecomp ${TAG}" > /tmp/notes.md; NOTES=/tmp/notes.md; }
+          PRE=""
+          case "$TAG" in *beta*|*test*|*rc*) PRE="--prerelease";; esac
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" out/* --clobber
+          else
+            gh release create "$TAG" out/* --title "LakuenTurismoRecomp ${TAG}" --notes-file "$NOTES" $PRE
+          fi

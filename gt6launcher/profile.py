@@ -431,6 +431,40 @@ def recommend_settings_for_hardware(cpu_info: dict[str, Any], gpu_name: str, ram
     return settings, summary
 
 
+# --------------------------------------------------------------------------- LakuenTurismoRecomp
+# Fixed preset for the owner's PC: Ryzen 7 5800X3D (8C/16T), Radeon RX 6600 XT (PCIe 4.0 x8 on an
+# ASUS ROG Strix B550-F Gaming), 16 GB DDR4, 1080p monitor, SteamOS desktop mode.
+# Built from the upstream hardware table with these facts, so it gets the same well-tested,
+# stable choices: Mid-Range GPU -> 1080p output, 150 % scale, Sharper MLAA, sharp shadows,
+# Strict Rendering (AMD), Mega SPU blocks, OS scheduler, ZCull queries off, no MT-RSX.
+# Applied automatically once per LAKUEN_PRESET_VERSION (old settings kept for "Restore").
+LAKUEN_PRESET_VERSION = 1
+LAKUEN_PC = {
+    "cpu": {"name": "AMD Ryzen 7 5800X3D 8-Core Processor", "threads": 16, "is_intel_hybrid": False,
+            "is_handheld": False, "board_name": "ROG STRIX B550-F GAMING"},
+    "gpu": "AMD Radeon RX 6600 XT",
+    "ram_gb": 16.0,
+}
+
+
+def lakuen_pc_settings() -> tuple[dict[str, Any], list[str]]:
+    cpu = dict(LAKUEN_PC["cpu"])
+    # still honour a real narrow link (card in the chipset x4 slot) instead of assuming
+    cpu["is_pcie_bottleneck"] = detect_gpu_pcie_bottleneck()
+    settings, summary = recommend_settings_for_hardware(cpu, LAKUEN_PC["gpu"], LAKUEN_PC["ram_gb"])
+    settings.update({
+        "fullscreen": True,
+        "frame_mode": "60",
+        "anisotropic": 16,
+        "aspect": "16:9",
+        "renderer": "Vulkan",
+        "async_texture_streaming": False,   # not in the stable upstream set
+        "audio_time_stretch": True,
+    })
+    summary.append("LakuenTurismoRecomp-Preset: Vollbild, 60 FPS, 16x AF, Vulkan")
+    return settings, summary
+
+
 @dataclass
 class Settings:
     # display

@@ -71,8 +71,8 @@ cp "$HERE/gt6launcher/data/img/icon.png" "$APPDIR/usr/share/icons/hicolor/256x25
 cat > "$APPDIR/usr/share/applications/gt6-launcher.desktop" <<'EOF'
 [Desktop Entry]
 Type=Application
-Name=GT6 Launcher
-Comment=Gran Turismo 6 on RPCS3 - setup, updates, patches, mods and LAN
+Name=LakuenTurismoRecomp
+Comment=LakuenTurismoRecomp - GT6 auf RPCS3 für SteamOS
 Exec=gt6-launcher
 Icon=gt6-launcher
 Categories=Game;Emulator;
