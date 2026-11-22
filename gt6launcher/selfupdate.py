@@ -28,7 +28,7 @@ import threading
 import urllib.request
 from typing import Callable, Optional
 
-REPO = os.environ.get("LTR_UPDATE_REPO") or "elkarbeenus/Gran-Turismo-6-PC"
+REPO = os.environ.get("LTR_UPDATE_REPO") or "elkarbeenus/LakuenTurismoRecomp"
 RELEASES_API = f"https://api.github.com/repos/{REPO}/releases?per_page=30"
 RELEASES_PAGE = f"https://github.com/{REPO}/releases"
 ASSET_NAME = "LakuenTurismoRecomp-x86_64.AppImage"

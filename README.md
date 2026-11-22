@@ -27,7 +27,7 @@ Based on [Mabec-games/Gran-Turismo-6-PC](https://github.com/Mabec-games/Gran-Tur
 ## Usage
 
 1. Download the latest `LakuenTurismoRecomp-x86_64.AppImage` from
-   [Releases](https://github.com/elkarbeenus/Gran-Turismo-6-PC/releases).
+   [Releases](https://github.com/elkarbeenus/LakuenTurismoRecomp/releases).
 2. Right-click → Properties → *Executable* (or `chmod +x LakuenTurismoRecomp-x86_64.AppImage`), then start it.
 3. In the **Setup** tab: install the firmware, add your GT6 disc image, install updates up to 1.22.
 4. **PLAY.** The first start compiles for about 8 minutes; the first start of 1.22 takes about 30 minutes in total.
