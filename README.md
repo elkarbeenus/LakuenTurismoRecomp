@@ -1,51 +1,51 @@
 # LakuenTurismoRecomp
 
-Eine AppImage für SteamOS (Desktop-Modus), die Gran Turismo 6 mit einem GT6-optimierten
-RPCS3 startet – mit festen, stabilen Einstellungen für meinen PC und eingebautem Auto-Update.
+A single AppImage for SteamOS (desktop mode) that runs Gran Turismo 6 on a GT6-optimised
+RPCS3 build, with stable pre-tuned settings and a built-in auto-updater.
 
-Basiert auf [Mabec-games/Gran-Turismo-6-PC](https://github.com/Mabec-games/Gran-Turismo-6-PC)
-(Stand v1.2 Beta 5). Inoffizielles Fanprojekt, keine Verbindung zu Sony oder Polyphony Digital.
+Based on [Mabec-games/Gran-Turismo-6-PC](https://github.com/Mabec-games/Gran-Turismo-6-PC)
+(v1.2 Beta 5). Unofficial fan project, not affiliated with Sony or Polyphony Digital.
 
-## Was anders ist als beim Original
+## What's different from upstream
 
-- **Nur Linux/SteamOS:** eine einzige Datei, `LakuenTurismoRecomp-x86_64.AppImage`. Keine Windows-Builds.
-- **Auto-Update in der App:** Beim Start wird in diesem Repo nach einer neueren Version gesucht.
-  Gibt es eine, fragt die App, ob du aktualisieren oder mit der alten Version spielen willst.
-  Ein Klick lädt die neue AppImage, prüft sie per SHA-256, ersetzt die alte Datei und startet neu.
-  Einstellungen, Spielstände, Firmware, Updates und Shader-Caches bleiben erhalten
-  (`~/.local/share/gt6-launcher`). Abschalten für Offline-Betrieb: `LTR_NO_UPDATE_CHECK=1`.
-- **Preset für meinen PC**, wird beim ersten Start automatisch gesetzt:
+- **Linux/SteamOS only:** one file, `LakuenTurismoRecomp-x86_64.AppImage`. No Windows builds.
+- **In-app auto-update:** on start the app checks this repository for a newer release and asks
+  whether to update now or keep playing the current version. One click downloads the new AppImage,
+  verifies it with SHA-256, replaces the old file and restarts. Settings, saves, firmware, game updates
+  and shader caches are kept (`~/.local/share/gt6-launcher`). Set `LTR_NO_UPDATE_CHECK=1` to play offline.
+- **Pre-tuned settings**, applied automatically on first start:
 
-  | Hardware | Einstellung |
+  | Area | Setting |
   |---|---|
-  | Ryzen 7 5800X3D (8 Kerne / 16 Threads), 16 GB RAM | SPU Block Size *Mega*, OS-Scheduler |
-  | Radeon RX 6600 XT, PCIe 4.0 x8 (ROG Strix B550-F) | 1080p-Ausgabe, 150 % Auflösung, Sharper MLAA, scharfe Schatten, Strict Rendering (AMD-Fix) |
-  | Stabilität | ZCull-Queries aus, kein Multithreaded-RSX, Tiled Memory an, Vollbild, 60 FPS, 16x AF |
+  | CPU | SPU Block Size *Mega*, OS thread scheduler |
+  | Graphics | 1080p output, 150 % resolution scale, Sharper MLAA, sharp shadows, Strict Rendering (AMD fix), 16x AF |
+  | Stability | ZCull queries off, no multithreaded RSX, tiled memory handling on, fullscreen, 60 FPS |
 
-  Die alten Einstellungen lassen sich jederzeit mit *Restore previous settings* zurückholen.
-  Auf einem 800p-Bildschirm (Steam Deck) greift stattdessen das Handheld-Preset.
+  Previous settings can be brought back at any time with *Restore previous settings*.
+  On an 800p screen (Steam Deck) the handheld preset is used instead.
 
-## Benutzung
+## Usage
 
-1. Neueste `LakuenTurismoRecomp-x86_64.AppImage` aus den
-   [Releases](https://github.com/elkarbeenus/Gran-Turismo-6-PC/releases) laden.
-2. Rechtsklick → Eigenschaften → *Ausführbar* (oder `chmod +x LakuenTurismoRecomp-x86_64.AppImage`), dann starten.
-3. Im Tab **Setup**: Firmware installieren, eigene GT6-ISO hinzufügen, Updates bis 1.22 installieren.
-4. **PLAY.** Der erste Start kompiliert ca. 8 Minuten, der erste Start von 1.22 dauert insgesamt ca. 30 Minuten.
+1. Download the latest `LakuenTurismoRecomp-x86_64.AppImage` from
+   [Releases](https://github.com/elkarbeenus/Gran-Turismo-6-PC/releases).
+2. Right-click → Properties → *Executable* (or `chmod +x LakuenTurismoRecomp-x86_64.AppImage`), then start it.
+3. In the **Setup** tab: install the firmware, add your GT6 disc image, install updates up to 1.22.
+4. **PLAY.** The first start compiles for about 8 minutes; the first start of 1.22 takes about 30 minutes in total.
 
-Du brauchst eine eigene Kopie von Gran Turismo 6 (Disc-Image). Spiel, Firmware und Keys sind nicht enthalten;
-Firmware und Spiel-Updates lädt die App direkt von Sonys Servern.
+You need your own copy of Gran Turismo 6 (disc image). No game files, firmware or keys are included;
+firmware and game updates are downloaded directly from Sony's servers.
 
-## Bauen
+## Building
 
-Der Workflow `.github/workflows/linux.yml` baut RPCS3 aus dem offiziellen Quellcode (fester Commit) plus
-die Patches in `emulator/gt6-patches/`, packt die AppImage und testet sie. Wird `__version__` in `gt6launcher/__init__.py` auf `main`
-erhöht (dazu `release-notes/v<version>.md`), legt der Workflow automatisch Tag und Release mit AppImage
-und `SHA256SUMS.txt` an. Test-Builds heißen z. B. `1.0.1-test1` und erscheinen als Pre-Release. Lokal: `packaging/build_appimage.sh`.
+`.github/workflows/linux.yml` builds RPCS3 from the official source (pinned commit) plus the patches in
+`emulator/gt6-patches/`, packs the AppImage and smoke-tests it. Bumping `__version__` in
+`gt6launcher/__init__.py` on `main` (with `release-notes/v<version>.md`) makes the workflow create the tag
+and the release with the AppImage and `SHA256SUMS.txt`. Test builds use versions like `1.0.1-test1` and are
+published as pre-releases. Local build: `packaging/build_appimage.sh`.
 
-Tests für den Updater: `python3 -m unittest tests/test_selfupdate.py`
+Updater tests: `python3 -m unittest tests/test_selfupdate.py`
 
 ## Credits
 
-Mabec-games (GT6 PC Launcher), RPCS3, AlexHaust, Nenkai, abowen, Lunard, FlexBy, Edo und das RPCS3-Wiki.
-Lizenz: GPL-3.0 (siehe `LICENSE`).
+Mabec-games (GT6 PC Launcher), RPCS3, AlexHaust, Nenkai, abowen, Lunard, FlexBy, Edo and the RPCS3 wiki.
+License: GPL-3.0 (see `LICENSE`).
